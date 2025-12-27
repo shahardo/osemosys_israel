@@ -218,38 +218,17 @@ class OSeMOSYSIsraelDataGenerator:
             print("Sets defined in YAML model structure")
         else:
             # Original CSV generation
-            sets_data = []
-            
-            # REGION
-            for r in self.regions:
-                sets_data.append({'SET': 'REGION', 'VALUE': r})
-            
-            # TECHNOLOGY
-            for t in self.all_technologies:
-                sets_data.append({'SET': 'TECHNOLOGY', 'VALUE': t})
-            
-            # FUEL (commodities)
-            for f in self.all_commodities:
-                sets_data.append({'SET': 'FUEL', 'VALUE': f})
-            
-            # TIMESLICE
-            for ts in self.timeslices:
-                sets_data.append({'SET': 'TIMESLICE', 'VALUE': ts})
-            
-            # YEAR
-            for y in self.years:
-                sets_data.append({'SET': 'YEAR', 'VALUE': y})
-            
-            # MODE_OF_OPERATION (simplified: 1 mode per technology)
-            sets_data.append({'SET': 'MODE_OF_OPERATION', 'VALUE': 1})
-            
-            # EMISSION (CO2, other pollutants)
-            for e in ['CO2', 'NOx', 'SOx', 'PM25']:
-                sets_data.append({'SET': 'EMISSION', 'VALUE': e})
-            
-            df = pd.DataFrame(sets_data)
+            sets_data = (
+                [{'SET': 'REGION', 'VALUE': r} for r in self.regions] +
+                [{'SET': 'TECHNOLOGY', 'VALUE': t} for t in self.all_technologies] +
+                [{'SET': 'FUEL', 'VALUE': f} for f in self.all_commodities] +
+                [{'SET': 'TIMESLICE', 'VALUE': ts} for ts in self.timeslices] +
+                [{'SET': 'YEAR', 'VALUE': y} for y in self.years] +
+                [{'SET': 'MODE_OF_OPERATION', 'VALUE': 1}] +
+                [{'SET': 'EMISSION', 'VALUE': e} for e in ['CO2', 'NOx', 'SOx', 'PM25']]
+            )
             output_file = self.output_dir / 'SETS.csv'
-            df.to_csv(output_file, index=False)
+            pd.DataFrame(sets_data).to_csv(output_file, index=False)
             print(f"Generated: {output_file}")
     
     def generate_specified_annual_demand(self):
