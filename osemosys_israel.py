@@ -41,6 +41,8 @@ class OSeMOSYSIsraelDataGenerator:
         
         # Define model structure
         self.define_sets()
+        # Define all parameter mappings (shared between CSV and YAML)
+        self.define_parameters()
         
     def define_sets(self):
         """Define all sets (commodities, technologies, etc.)"""
@@ -155,113 +157,10 @@ class OSeMOSYSIsraelDataGenerator:
         for tech_list in self.technologies.values():
             self.all_technologies.extend(tech_list)
     
-    def load_demand_data(self):
-        """Load demand data from Excel file"""
-        print("Loading demand data from Excel...")
-        
-        # Expected sheet names matching useful energy demands
-        demand_sheets = {
-            'ElecResidential': 'DMD_ElecResidential',
-            'ElecCommercial': 'DMD_ElecCommercial',
-            'ElecIndustrial': 'DMD_ElecIndustrial',
-            'ElecWater': 'DMD_ElecWater',
-            'ElecAgriculture': 'DMD_ElecAgriculture',
-            'TransportPrivate': 'DMD_TransportPrivate',
-            'TransportPublic': 'DMD_TransportPublic',
-            'TransportFreight': 'DMD_TransportFreight',
-            'TransportAgriculture': 'DMD_TransportAgriculture',
-            'TransportHeavyEquip': 'DMD_TransportHeavyEquip',
-            'HeatCoolResidential': 'DMD_HeatCoolResidential',
-            'HeatCoolCommercial': 'DMD_HeatCoolCommercial',
-            'IndustrialHeat': 'DMD_IndustrialHeat'
-        }
-        
-        self.demand_data = {}
-        
-        try:
-            excel_file = pd.ExcelFile(self.excel_file)
-            
-            for sheet_name, tech_name in demand_sheets.items():
-                if sheet_name in excel_file.sheet_names:
-                    df = pd.read_excel(excel_file, sheet_name=sheet_name)
-                    # Assume format: Year, Timeslice columns or just Year with annual values
-                    self.demand_data[tech_name] = df
-                    print(f"  Loaded: {sheet_name}")
-                else:
-                    print(f"  Warning: Sheet '{sheet_name}' not found. Will use default values.")
-                    self.demand_data[tech_name] = self.create_default_demand(tech_name)
-                    
-        except FileNotFoundError:
-            print(f"Excel file not found. Creating template with default values...")
-            for tech_name in demand_sheets.values():
-                self.demand_data[tech_name] = self.create_default_demand(tech_name)
-    
-    def create_default_demand(self, tech_name):
-        """Create default demand data for missing sheets"""
-        # Simple growth assumption: 2% annual growth
-        base_demand = 1000  # PJ
-        data = []
-        for year in self.years:
-            growth_factor = (1.02) ** (year - self.start_year)
-            data.append({'Year': year, 'AnnualDemand': base_demand * growth_factor})
-        return pd.DataFrame(data)
-    
-    def generate_sets_file(self):
-        """Generate SETS.csv file or populate YAML model structure"""
-        if self.yaml_format:
-            # Build YAML model structure
-            self.model_data['model']['regions'] = [{'id': r} for r in self.regions]
-            self.model_data['model']['commodities'] = [{'id': f} for f in self.all_commodities]
-            self.model_data['model']['technologies'] = [{'id': t} for t in self.all_technologies]
-            self.model_data['model']['time_slices'] = [{'id': ts} for ts in self.timeslices]
-            self.model_data['model']['emissions'] = [{'id': e} for e in ['CO2', 'NOx', 'SOx', 'PM25']]
-            print("Sets defined in YAML model structure")
-        else:
-            # Original CSV generation
-            sets_data = (
-                [{'SET': 'REGION', 'VALUE': r} for r in self.regions] +
-                [{'SET': 'TECHNOLOGY', 'VALUE': t} for t in self.all_technologies] +
-                [{'SET': 'FUEL', 'VALUE': f} for f in self.all_commodities] +
-                [{'SET': 'TIMESLICE', 'VALUE': ts} for ts in self.timeslices] +
-                [{'SET': 'YEAR', 'VALUE': y} for y in self.years] +
-                [{'SET': 'MODE_OF_OPERATION', 'VALUE': 1}] +
-                [{'SET': 'EMISSION', 'VALUE': e} for e in ['CO2', 'NOx', 'SOx', 'PM25']]
-            )
-            output_file = self.output_dir / 'SETS.csv'
-            pd.DataFrame(sets_data).to_csv(output_file, index=False)
-            print(f"Generated: {output_file}")
-    
-    def generate_specified_annual_demand(self):
-        """Generate SpecifiedAnnualDemand.csv"""
-        data = []
-        
-        for tech_name, demand_df in self.demand_data.items():
-            # Extract the useful energy commodity from demand technology
-            # DMD_ElecResidential -> ElecResidential
-            fuel = tech_name.replace('DMD_', '')
-            
-            for _, row in demand_df.iterrows():
-                year = int(row['Year'])
-                demand = row.get('AnnualDemand', 1000)  # Default if not found
-                
-                data.append({
-                    'REGION': 'ISRAEL',
-                    'FUEL': fuel,
-                    'YEAR': year,
-                    'VALUE': demand
-                })
-        
-        df = pd.DataFrame(data)
-        output_file = self.output_dir / 'SpecifiedAnnualDemand.csv'
-        df.to_csv(output_file, index=False)
-        print(f"Generated: {output_file}")
-    
-    def generate_capacity_factor(self):
-        """Generate CapacityFactor.csv"""
-        data = []
-        
-        # Define capacity factors by technology type
-        cf_map = {
+    def define_parameters(self):
+        """Define all parameter mappings shared between CSV and YAML generation"""
+        # Capacity factors
+        self.capacity_factors = {
             'PWR_Solar_Utility': 0.20,
             'PWR_Solar_Rooftop_Res': 0.18,
             'PWR_Solar_Rooftop_Com': 0.19,
@@ -279,258 +178,8 @@ class OSeMOSYSIsraelDataGenerator:
             'PWR_Hydrogen_CCGT': 0.85
         }
         
-        for tech, cf in cf_map.items():
-            for year in self.years:
-                for ts in self.timeslices:
-                    # Adjust CF by timeslice for solar/wind
-                    cf_adj = cf
-                    if 'Solar' in tech:
-                        if 'NIGHT' in ts:
-                            cf_adj = 0.0
-                        elif 'DAY' in ts:
-                            cf_adj = cf * 1.5  # Higher during day
-                    
-                    data.append({
-                        'REGION': 'ISRAEL',
-                        'TECHNOLOGY': tech,
-                        'TIMESLICE': ts,
-                        'YEAR': year,
-                        'VALUE': cf_adj
-                    })
-        
-        df = pd.DataFrame(data)
-        output_file = self.output_dir / 'CapacityFactor.csv'
-        df.to_csv(output_file, index=False)
-        print(f"Generated: {output_file}")
-    
-    def generate_input_activity_ratio(self):
-        """Generate InputActivityRatio.csv"""
-        data = []
-        
-        # Define input-output relationships (technology: {input_fuel: ratio})
-        # Mode of operation = 1 for all
-        
-        input_ratios = {
-            # Power generation (input fuel per PJ electricity output)
-            'PWR_NGCC': {'NaturalGas': 1.75},
-            'PWR_NGCC_CCS': {'NaturalGas': 2.0},
-            'PWR_OCGT': {'NaturalGas': 2.5},
-            'PWR_OCGT_CCS': {'NaturalGas': 2.8},
-            'PWR_NatGas_Steam': {'NaturalGas': 2.2},
-            'PWR_Coal': {'Coal': 2.5},
-            'PWR_Solar_Utility': {'SolarRadiation': 1.0},
-            'PWR_Solar_Rooftop_Res': {'SolarRadiation': 1.0},
-            'PWR_Solar_Rooftop_Com': {'SolarRadiation': 1.0},
-            'PWR_Wind_Onshore': {'Wind': 1.0},
-            'PWR_CSP_Storage': {'SolarRadiation': 1.3},
-            'PWR_WTE_Incinerator': {'Biomass': 3.0},
-            'PWR_WTE_Biodigester': {'Biomass': 2.0},
-            'PWR_Nuclear_SMR': {'NaturalGas': 0.01},  # Placeholder
-            'PWR_Hydrogen_CCGT': {'Hydrogen': 2.0},
-            
-            # Transmission
-            'TRN_Electricity': {'Electricity': 1.02},  # 2% losses
-            
-            # Oil refining
-            'REF_Oil': {'CrudeOil': 1.05},
-            
-            # Hydrogen production
-            'H2_Electrolyzer_Green': {'Electricity': 1.5},
-            'H2_Blue_NatGas_CCS': {'NaturalGas': 1.8},
-            
-            # Synthetic fuel production
-            'REF_Biodiesel': {'Biomass': 1.3, 'Electricity': 0.1},
-            'REF_Ethanol': {'Biomass': 1.4, 'Electricity': 0.1},
-            'REF_SAF': {'Hydrogen': 1.5, 'Electricity': 0.2},
-            'REF_SyntheticDiesel': {'Hydrogen': 1.4, 'Electricity': 0.2},
-            'REF_Methanol': {'Hydrogen': 1.3, 'Electricity': 0.15},
-            'REF_Ammonia': {'Hydrogen': 1.2, 'Electricity': 0.15},
-            
-            # Distribution (minimal losses)
-            'DST_Diesel': {'Diesel': 1.01},
-            'DST_Gasoline': {'Gasoline': 1.01},
-            'DST_LPG': {'LPG': 1.01},
-            'DST_JetFuel': {'JetFuel': 1.01},
-            'DST_Hydrogen': {'Hydrogen': 1.05},
-            
-            # Transport - Private vehicles
-            'TRA_Car_Gasoline': {'Gasoline': 1.0},
-            'TRA_Car_Diesel': {'Diesel': 1.0},
-            'TRA_Car_Hybrid': {'Gasoline': 0.7, 'Electricity': 0.2},
-            'TRA_Car_BEV': {'Electricity': 1.0},
-            'TRA_Car_H2': {'Hydrogen': 1.0},
-            
-            # Transport - Public
-            'TRA_Bus_Diesel': {'Diesel': 1.0},
-            'TRA_Bus_CNG': {'NaturalGas': 1.0},
-            'TRA_Bus_Electric': {'Electricity': 1.0},
-            'TRA_Bus_H2': {'Hydrogen': 1.0},
-            'TRA_LightRail_Electric': {'Electricity': 1.0},
-            'TRA_Metro_Electric': {'Electricity': 1.0},
-            
-            # Transport - Rail
-            'TRA_Rail_Passenger_Electric': {'Electricity': 1.0},
-            'TRA_Rail_Freight_Diesel': {'Diesel': 1.0},
-            
-            # Transport - Freight
-            'TRA_Truck_Diesel': {'Diesel': 1.0},
-            'TRA_Truck_Electric': {'Electricity': 1.0},
-            'TRA_Truck_H2': {'Hydrogen': 1.0},
-            
-            # Transport - Agriculture
-            'TRA_AgVehicle_Diesel': {'Diesel': 1.0},
-            'TRA_AgVehicle_Electric': {'Electricity': 1.0},
-            
-            # Transport - Heavy Equipment
-            'TRA_HeavyEquip_Diesel': {'Diesel': 1.0},
-            'TRA_HeavyEquip_Electric': {'Electricity': 1.0},
-            
-            # Heating & Cooling
-            'HC_HeatPump_AC_Electric': {'Electricity': 1.0},
-            'HC_GasBoiler': {'NaturalGas': 1.1},
-            'HC_SolarWaterHeater': {'SolarRadiation': 1.0, 'Electricity': 0.1},
-            'HC_DistrictCooling': {'Electricity': 1.2},
-        }
-        
-        for tech, inputs in input_ratios.items():
-            for fuel, ratio in inputs.items():
-                for year in self.years:
-                    data.append({
-                        'REGION': 'ISRAEL',
-                        'TECHNOLOGY': tech,
-                        'FUEL': fuel,
-                        'MODE_OF_OPERATION': 1,
-                        'YEAR': year,
-                        'VALUE': ratio
-                    })
-        
-        df = pd.DataFrame(data)
-        output_file = self.output_dir / 'InputActivityRatio.csv'
-        df.to_csv(output_file, index=False)
-        print(f"Generated: {output_file}")
-    
-    def generate_output_activity_ratio(self):
-        """Generate OutputActivityRatio.csv"""
-        data = []
-        
-        # Define outputs (technology: {output_fuel: ratio})
-        output_ratios = {
-            # Imports produce their respective fuels
-            'IMP_CrudeOil': {'CrudeOil': 1.0},
-            'IMP_NaturalGas': {'NaturalGas': 1.0},
-            'IMP_Coal': {'Coal': 1.0},
-            'IMP_Hydrogen': {'Hydrogen': 1.0},
-            'IMP_SAF': {'SAF': 1.0},
-            'IMP_Methanol': {'Methanol': 1.0},
-            'IMP_Ethanol': {'Ethanol': 1.0},
-            'IMP_Ammonia': {'Ammonia': 1.0},
-            'IMP_Biodiesel': {'Biodiesel': 1.0},
-            'IMP_SyntheticDiesel': {'SyntheticDiesel': 1.0},
-            
-            # Domestic extraction
-            'MIN_NaturalGas_Domestic': {'NaturalGas': 1.0},
-            
-            # Power generation produces electricity
-            'PWR_NGCC': {'Electricity': 1.0},
-            'PWR_NGCC_CCS': {'Electricity': 1.0},
-            'PWR_OCGT': {'Electricity': 1.0},
-            'PWR_OCGT_CCS': {'Electricity': 1.0},
-            'PWR_NatGas_Steam': {'Electricity': 1.0},
-            'PWR_Coal': {'Electricity': 1.0},
-            'PWR_Solar_Utility': {'Electricity': 1.0},
-            'PWR_Solar_Rooftop_Res': {'Electricity': 1.0},
-            'PWR_Solar_Rooftop_Com': {'Electricity': 1.0},
-            'PWR_Wind_Onshore': {'Electricity': 1.0},
-            'PWR_CSP_Storage': {'Electricity': 1.0},
-            'PWR_WTE_Incinerator': {'Electricity': 1.0},
-            'PWR_WTE_Biodigester': {'Electricity': 1.0},
-            'PWR_Nuclear_SMR': {'Electricity': 1.0},
-            'PWR_Hydrogen_CCGT': {'Electricity': 1.0},
-            
-            # Transmission
-            'TRN_Electricity': {'Electricity': 1.0},
-            
-            # Oil refining produces multiple fuels
-            'REF_Oil': {'Diesel': 0.35, 'Gasoline': 0.25, 'JetFuel': 0.15, 
-                       'LPG': 0.10, 'HeavyFuelOil': 0.10},
-            
-            # Hydrogen production
-            'H2_Electrolyzer_Green': {'Hydrogen': 1.0},
-            'H2_Blue_NatGas_CCS': {'Hydrogen': 1.0},
-            
-            # Synthetic fuel production
-            'REF_Biodiesel': {'Biodiesel': 1.0},
-            'REF_Ethanol': {'Ethanol': 1.0},
-            'REF_SAF': {'SAF': 1.0},
-            'REF_SyntheticDiesel': {'SyntheticDiesel': 1.0},
-            'REF_Methanol': {'Methanol': 1.0},
-            'REF_Ammonia': {'Ammonia': 1.0},
-            
-            # Distribution
-            'DST_Diesel': {'Diesel': 1.0},
-            'DST_Gasoline': {'Gasoline': 1.0},
-            'DST_LPG': {'LPG': 1.0},
-            'DST_JetFuel': {'JetFuel': 1.0},
-            'DST_Hydrogen': {'Hydrogen': 1.0},
-            
-            # Transport produces useful energy
-            'TRA_Car_Gasoline': {'TransportPrivate': 1.0},
-            'TRA_Car_Diesel': {'TransportPrivate': 1.0},
-            'TRA_Car_Hybrid': {'TransportPrivate': 1.0},
-            'TRA_Car_BEV': {'TransportPrivate': 1.0},
-            'TRA_Car_H2': {'TransportPrivate': 1.0},
-            
-            'TRA_Bus_Diesel': {'TransportPublic': 1.0},
-            'TRA_Bus_CNG': {'TransportPublic': 1.0},
-            'TRA_Bus_Electric': {'TransportPublic': 1.0},
-            'TRA_Bus_H2': {'TransportPublic': 1.0},
-            'TRA_LightRail_Electric': {'TransportPublic': 1.0},
-            'TRA_Metro_Electric': {'TransportPublic': 1.0},
-            
-            'TRA_Rail_Passenger_Electric': {'TransportPublic': 1.0},
-            'TRA_Rail_Freight_Diesel': {'TransportFreight': 1.0},
-            
-            'TRA_Truck_Diesel': {'TransportFreight': 1.0},
-            'TRA_Truck_Electric': {'TransportFreight': 1.0},
-            'TRA_Truck_H2': {'TransportFreight': 1.0},
-            
-            'TRA_AgVehicle_Diesel': {'TransportAgriculture': 1.0},
-            'TRA_AgVehicle_Electric': {'TransportAgriculture': 1.0},
-            
-            'TRA_HeavyEquip_Diesel': {'TransportHeavyEquip': 1.0},
-            'TRA_HeavyEquip_Electric': {'TransportHeavyEquip': 1.0},
-            
-            # Heating & Cooling
-            'HC_HeatPump_AC_Electric': {'HeatCoolResidential': 0.5, 'HeatCoolCommercial': 0.5},
-            'HC_GasBoiler': {'HeatCoolResidential': 0.5, 'HeatCoolCommercial': 0.5},
-            'HC_SolarWaterHeater': {'HeatCoolResidential': 1.0},
-            'HC_DistrictCooling': {'HeatCoolCommercial': 1.0},
-        }
-        
-        for tech, outputs in output_ratios.items():
-            for fuel, ratio in outputs.items():
-                for year in self.years:
-                    data.append({
-                        'REGION': 'ISRAEL',
-                        'TECHNOLOGY': tech,
-                        'FUEL': fuel,
-                        'MODE_OF_OPERATION': 1,
-                        'YEAR': year,
-                        'VALUE': ratio
-                    })
-        
-        df = pd.DataFrame(data)
-        output_file = self.output_dir / 'OutputActivityRatio.csv'
-        df.to_csv(output_file, index=False)
-        print(f"Generated: {output_file}")
-    
-    def generate_capital_cost(self):
-        """Generate CapitalCost.csv (investment costs)"""
-        data = []
-        
-        # Capital costs in M$/GW or M$/PJ capacity
-        # These are illustrative values - should be updated with real data
-        capital_costs = {
+        # Capital costs
+        self.capital_costs = {
             'PWR_NGCC': 900,
             'PWR_NGCC_CCS': 1500,
             'PWR_OCGT': 600,
@@ -558,54 +207,16 @@ class OSeMOSYSIsraelDataGenerator:
             'TRA_Truck_H2': 300,
         }
         
-        for tech, cost in capital_costs.items():
-            for year in self.years:
-                # Apply technology learning (cost reduction over time)
-                cost_year = cost * (0.98 ** (year - self.start_year))
-                data.append({
-                    'REGION': 'ISRAEL',
-                    'TECHNOLOGY': tech,
-                    'YEAR': year,
-                    'VALUE': cost_year
-                })
-        
-        df = pd.DataFrame(data)
-        output_file = self.output_dir / 'CapitalCost.csv'
-        df.to_csv(output_file, index=False)
-        print(f"Generated: {output_file}")
-    
-    def generate_fixed_cost(self):
-        """Generate FixedCost.csv (annual O&M costs)"""
-        data = []
-        
-        # Fixed O&M costs (% of capital cost per year)
-        fixed_costs = {
+        # Fixed costs
+        self.fixed_costs = {
             'PWR_NGCC': 20,
             'PWR_Solar_Utility': 15,
             'PWR_Wind_Onshore': 25,
             'PWR_Nuclear_SMR': 80,
         }
         
-        for tech, cost in fixed_costs.items():
-            for year in self.years:
-                data.append({
-                    'REGION': 'ISRAEL',
-                    'TECHNOLOGY': tech,
-                    'YEAR': year,
-                    'VALUE': cost
-                })
-        
-        df = pd.DataFrame(data)
-        output_file = self.output_dir / 'FixedCost.csv'
-        df.to_csv(output_file, index=False)
-        print(f"Generated: {output_file}")
-    
-    def generate_variable_cost(self):
-        """Generate VariableCost.csv (per PJ produced)"""
-        data = []
-        
-        # Variable costs including fuel costs ($/PJ)
-        variable_costs = {
+        # Variable costs
+        self.variable_costs = {
             'IMP_CrudeOil': 15000,
             'IMP_NaturalGas': 8000,
             'IMP_Coal': 3000,
@@ -616,185 +227,16 @@ class OSeMOSYSIsraelDataGenerator:
             'PWR_Wind_Onshore': 15,
         }
         
-        for tech, cost in variable_costs.items():
-            for year in self.years:
-                data.append({
-                    'REGION': 'ISRAEL',
-                    'TECHNOLOGY': tech,
-                    'MODE_OF_OPERATION': 1,
-                    'YEAR': year,
-                    'VALUE': cost
-                })
-        
-        df = pd.DataFrame(data)
-        output_file = self.output_dir / 'VariableCost.csv'
-        df.to_csv(output_file, index=False)
-        print(f"Generated: {output_file}")
-    
-    def generate_emission_activity_ratio(self):
-        """Generate EmissionActivityRatio.csv"""
-        data = []
-        
-        # CO2 emissions (tonnes CO2 per PJ)
-        emission_ratios = {
-            'PWR_NGCC': {'CO2': 56000},
-            'PWR_NGCC_CCS': {'CO2': 5600},  # 90% capture
-            'PWR_OCGT': {'CO2': 58000},
-            'PWR_OCGT_CCS': {'CO2': 5800},
-            'PWR_NatGas_Steam': {'CO2': 57000},
-            'PWR_Coal': {'CO2': 95000},
-            'TRA_Car_Gasoline': {'CO2': 69000},
-            'TRA_Car_Diesel': {'CO2': 74000},
-            'TRA_Truck_Diesel': {'CO2': 74000},
-        }
-        
-        for tech, emissions in emission_ratios.items():
-            for emission, ratio in emissions.items():
-                for year in self.years:
-                    data.append({
-                        'REGION': 'ISRAEL',
-                        'TECHNOLOGY': tech,
-                        'EMISSION': emission,
-                        'MODE_OF_OPERATION': 1,
-                        'YEAR': year,
-                        'VALUE': ratio
-                    })
-        
-        df = pd.DataFrame(data)
-        output_file = self.output_dir / 'EmissionActivityRatio.csv'
-        df.to_csv(output_file, index=False)
-        print(f"Generated: {output_file}")
-    
-    def generate_residual_capacity(self):
-        """Generate ResidualCapacity.csv (existing capacity in base year)"""
-        data = []
-        
-        # Existing capacity in 2015 (GW for power, appropriate units for others)
-        residual_capacity = {
+        # Residual capacity
+        self.residual_capacity = {
             'PWR_NGCC': 8.0,
             'PWR_Coal': 5.0,
             'PWR_Solar_Utility': 0.5,
             'PWR_Wind_Onshore': 0.1,
         }
         
-        for tech, capacity in residual_capacity.items():
-            data.append({
-                'REGION': 'ISRAEL',
-                'TECHNOLOGY': tech,
-                'YEAR': self.start_year,
-                'VALUE': capacity
-            })
-        
-        df = pd.DataFrame(data)
-        output_file = self.output_dir / 'ResidualCapacity.csv'
-        df.to_csv(output_file, index=False)
-        print(f"Generated: {output_file}")
-    
-    def build_yaml_model(self):
-        """Build complete YAML model structure for tz-osemosys"""
-        if not self.yaml_format:
-            return
-        
-        print("Building YAML model structure...")
-        
-        # Initialize model structure
-        model = {
-            'id': 'israel_energy_model',
-            'time_definition': {
-                'start_year': self.start_year,
-                'end_year': self.end_year,
-                'years': self.years
-            },
-            'regions': [{'id': r} for r in self.regions],
-            'commodities': [{'id': f} for f in self.all_commodities],
-            'time_slices': [{'id': ts} for ts in self.timeslices],
-            'emissions': [{'id': e} for e in ['CO2', 'NOx', 'SOx', 'PM25']],
-            'technologies': []
-        }
-        
-        # Build technology definitions with parameters
-        self._add_technologies_to_yaml(model)
-        
-        # Add demand specifications
-        self._add_demand_to_yaml(model)
-        
-        self.model_data = {'model': model}
-    
-    def _add_technologies_to_yaml(self, model):
-        """Add technology definitions with all parameters to YAML model"""
-        # Define all parameter mappings (same as CSV generation)
-        cf_map = {
-            'PWR_Solar_Utility': 0.20,
-            'PWR_Solar_Rooftop_Res': 0.18,
-            'PWR_Solar_Rooftop_Com': 0.19,
-            'PWR_Wind_Onshore': 0.25,
-            'PWR_CSP_Storage': 0.45,
-            'PWR_NGCC': 0.85,
-            'PWR_NGCC_CCS': 0.80,
-            'PWR_OCGT': 0.20,
-            'PWR_OCGT_CCS': 0.20,
-            'PWR_NatGas_Steam': 0.75,
-            'PWR_Coal': 0.80,
-            'PWR_WTE_Incinerator': 0.85,
-            'PWR_WTE_Biodigester': 0.90,
-            'PWR_Nuclear_SMR': 0.90,
-            'PWR_Hydrogen_CCGT': 0.85
-        }
-        
-        capital_costs = {
-            'PWR_NGCC': 900,
-            'PWR_NGCC_CCS': 1500,
-            'PWR_OCGT': 600,
-            'PWR_OCGT_CCS': 1000,
-            'PWR_NatGas_Steam': 1000,
-            'PWR_Coal': 2000,
-            'PWR_Solar_Utility': 800,
-            'PWR_Solar_Rooftop_Res': 1200,
-            'PWR_Solar_Rooftop_Com': 1000,
-            'PWR_Wind_Onshore': 1400,
-            'PWR_CSP_Storage': 5000,
-            'PWR_WTE_Incinerator': 3500,
-            'PWR_WTE_Biodigester': 2500,
-            'PWR_Nuclear_SMR': 6000,
-            'PWR_Hydrogen_CCGT': 1200,
-            'STO_Battery': 400,
-            'STO_Pumped_Hydro': 2000,
-            'H2_Electrolyzer_Green': 1000,
-            'H2_Blue_NatGas_CCS': 1500,
-            'TRA_Car_BEV': 35,
-            'TRA_Car_H2': 50,
-            'TRA_Bus_Electric': 300,
-            'TRA_Bus_H2': 400,
-            'TRA_Truck_Electric': 200,
-            'TRA_Truck_H2': 300,
-        }
-        
-        fixed_costs = {
-            'PWR_NGCC': 20,
-            'PWR_Solar_Utility': 15,
-            'PWR_Wind_Onshore': 25,
-            'PWR_Nuclear_SMR': 80,
-        }
-        
-        variable_costs = {
-            'IMP_CrudeOil': 15000,
-            'IMP_NaturalGas': 8000,
-            'IMP_Coal': 3000,
-            'IMP_Hydrogen': 50000,
-            'PWR_NGCC': 500,
-            'PWR_Coal': 800,
-            'PWR_Solar_Utility': 10,
-            'PWR_Wind_Onshore': 15,
-        }
-        
-        residual_capacity = {
-            'PWR_NGCC': 8.0,
-            'PWR_Coal': 5.0,
-            'PWR_Solar_Utility': 0.5,
-            'PWR_Wind_Onshore': 0.1,
-        }
-        
-        input_ratios = {
+        # Input activity ratios
+        self.input_ratios = {
             'PWR_NGCC': {'NaturalGas': 1.75},
             'PWR_NGCC_CCS': {'NaturalGas': 2.0},
             'PWR_OCGT': {'NaturalGas': 2.5},
@@ -851,7 +293,8 @@ class OSeMOSYSIsraelDataGenerator:
             'HC_DistrictCooling': {'Electricity': 1.2},
         }
         
-        output_ratios = {
+        # Output activity ratios
+        self.output_ratios = {
             'IMP_CrudeOil': {'CrudeOil': 1.0},
             'IMP_NaturalGas': {'NaturalGas': 1.0},
             'IMP_Coal': {'Coal': 1.0},
@@ -920,7 +363,8 @@ class OSeMOSYSIsraelDataGenerator:
             'HC_DistrictCooling': {'HeatCoolCommercial': 1.0},
         }
         
-        emission_ratios = {
+        # Emission activity ratios
+        self.emission_ratios = {
             'PWR_NGCC': {'CO2': 56000},
             'PWR_NGCC_CCS': {'CO2': 5600},
             'PWR_OCGT': {'CO2': 58000},
@@ -931,15 +375,308 @@ class OSeMOSYSIsraelDataGenerator:
             'TRA_Car_Diesel': {'CO2': 74000},
             'TRA_Truck_Diesel': {'CO2': 74000},
         }
+    
+    def load_demand_data(self):
+        """Load demand data from Excel file"""
+        print("Loading demand data from Excel...")
         
-        # Build technology entries
+        # Expected sheet names matching useful energy demands
+        demand_sheets = {
+            'ElecResidential': 'DMD_ElecResidential',
+            'ElecCommercial': 'DMD_ElecCommercial',
+            'ElecIndustrial': 'DMD_ElecIndustrial',
+            'ElecWater': 'DMD_ElecWater',
+            'ElecAgriculture': 'DMD_ElecAgriculture',
+            'TransportPrivate': 'DMD_TransportPrivate',
+            'TransportPublic': 'DMD_TransportPublic',
+            'TransportFreight': 'DMD_TransportFreight',
+            'TransportAgriculture': 'DMD_TransportAgriculture',
+            'TransportHeavyEquip': 'DMD_TransportHeavyEquip',
+            'HeatCoolResidential': 'DMD_HeatCoolResidential',
+            'HeatCoolCommercial': 'DMD_HeatCoolCommercial',
+            'IndustrialHeat': 'DMD_IndustrialHeat'
+        }
+        
+        self.demand_data = {}
+        
+        try:
+            excel_file = pd.ExcelFile(self.excel_file)
+            
+            for sheet_name, tech_name in demand_sheets.items():
+                if sheet_name in excel_file.sheet_names:
+                    df = pd.read_excel(excel_file, sheet_name=sheet_name)
+                    # Assume format: Year, Timeslice columns or just Year with annual values
+                    self.demand_data[tech_name] = df
+                    print(f"  Loaded: {sheet_name}")
+                else:
+                    print(f"  Warning: Sheet '{sheet_name}' not found. Will use default values.")
+                    self.demand_data[tech_name] = self.create_default_demand(tech_name)
+                    
+        except FileNotFoundError:
+            print(f"Excel file not found. Creating template with default values...")
+            for tech_name in demand_sheets.values():
+                self.demand_data[tech_name] = self.create_default_demand(tech_name)
+    
+    def create_default_demand(self, tech_name):
+        """Create default demand data for missing sheets"""
+        # Simple growth assumption: 2% annual growth
+        base_demand = 1000  # PJ
+        data = []
+        for year in self.years:
+            growth_factor = (1.02) ** (year - self.start_year)
+            data.append({'Year': year, 'AnnualDemand': base_demand * growth_factor})
+        return pd.DataFrame(data)
+    
+    def generate_sets_file(self):
+        """Generate SETS.csv file or populate YAML model structure"""
+        if self.yaml_format:
+            # Sets are defined in build_yaml_model, so just print message
+            print("Sets will be defined in YAML model structure")
+        else:
+            # Original CSV generation
+            sets_data = (
+                [{'SET': 'REGION', 'VALUE': r} for r in self.regions] +
+                [{'SET': 'TECHNOLOGY', 'VALUE': t} for t in self.all_technologies] +
+                [{'SET': 'FUEL', 'VALUE': f} for f in self.all_commodities] +
+                [{'SET': 'TIMESLICE', 'VALUE': ts} for ts in self.timeslices] +
+                [{'SET': 'YEAR', 'VALUE': y} for y in self.years] +
+                [{'SET': 'MODE_OF_OPERATION', 'VALUE': 1}] +
+                [{'SET': 'EMISSION', 'VALUE': e} for e in ['CO2', 'NOx', 'SOx', 'PM25']]
+            )
+            output_file = self.output_dir / 'SETS.csv'
+            pd.DataFrame(sets_data).to_csv(output_file, index=False)
+            print(f"Generated: {output_file}")
+    
+    def generate_specified_annual_demand(self):
+        """Generate SpecifiedAnnualDemand.csv"""
+        data = []
+        
+        for tech_name, demand_df in self.demand_data.items():
+            # Extract the useful energy commodity from demand technology
+            # DMD_ElecResidential -> ElecResidential
+            fuel = tech_name.replace('DMD_', '')
+            
+            for _, row in demand_df.iterrows():
+                year = int(row['Year'])
+                demand = row.get('AnnualDemand', 1000)  # Default if not found
+                
+                data.append({
+                    'REGION': 'ISRAEL',
+                    'FUEL': fuel,
+                    'YEAR': year,
+                    'VALUE': demand
+                })
+        
+        df = pd.DataFrame(data)
+        output_file = self.output_dir / 'SpecifiedAnnualDemand.csv'
+        df.to_csv(output_file, index=False)
+        print(f"Generated: {output_file}")
+    
+    def generate_capacity_factor(self):
+        """Generate CapacityFactor.csv"""
+        data = []
+        
+        for tech, cf in self.capacity_factors.items():
+            for year in self.years:
+                for ts in self.timeslices:
+                    # Adjust CF by timeslice for solar/wind
+                    cf_adj = cf
+                    if 'Solar' in tech:
+                        if 'NIGHT' in ts:
+                            cf_adj = 0.0
+                        elif 'DAY' in ts:
+                            cf_adj = cf * 1.5  # Higher during day
+                    
+                    data.append({
+                        'REGION': 'ISRAEL',
+                        'TECHNOLOGY': tech,
+                        'TIMESLICE': ts,
+                        'YEAR': year,
+                        'VALUE': cf_adj
+                    })
+        
+        df = pd.DataFrame(data)
+        output_file = self.output_dir / 'CapacityFactor.csv'
+        df.to_csv(output_file, index=False)
+        print(f"Generated: {output_file}")
+    
+    def generate_input_activity_ratio(self):
+        """Generate InputActivityRatio.csv"""
+        data = []
+        
+        for tech, inputs in self.input_ratios.items():
+            for fuel, ratio in inputs.items():
+                for year in self.years:
+                    data.append({
+                        'REGION': 'ISRAEL',
+                        'TECHNOLOGY': tech,
+                        'FUEL': fuel,
+                        'MODE_OF_OPERATION': 1,
+                        'YEAR': year,
+                        'VALUE': ratio
+                    })
+        
+        df = pd.DataFrame(data)
+        output_file = self.output_dir / 'InputActivityRatio.csv'
+        df.to_csv(output_file, index=False)
+        print(f"Generated: {output_file}")
+    
+    def generate_output_activity_ratio(self):
+        """Generate OutputActivityRatio.csv"""
+        data = []
+        
+        for tech, outputs in self.output_ratios.items():
+            for fuel, ratio in outputs.items():
+                for year in self.years:
+                    data.append({
+                        'REGION': 'ISRAEL',
+                        'TECHNOLOGY': tech,
+                        'FUEL': fuel,
+                        'MODE_OF_OPERATION': 1,
+                        'YEAR': year,
+                        'VALUE': ratio
+                    })
+        
+        df = pd.DataFrame(data)
+        output_file = self.output_dir / 'OutputActivityRatio.csv'
+        df.to_csv(output_file, index=False)
+        print(f"Generated: {output_file}")
+    
+    def generate_capital_cost(self):
+        """Generate CapitalCost.csv (investment costs)"""
+        data = []
+        
+        for tech, cost in self.capital_costs.items():
+            for year in self.years:
+                # Apply technology learning (cost reduction over time)
+                cost_year = cost * (0.98 ** (year - self.start_year))
+                data.append({
+                    'REGION': 'ISRAEL',
+                    'TECHNOLOGY': tech,
+                    'YEAR': year,
+                    'VALUE': cost_year
+                })
+        
+        df = pd.DataFrame(data)
+        output_file = self.output_dir / 'CapitalCost.csv'
+        df.to_csv(output_file, index=False)
+        print(f"Generated: {output_file}")
+    
+    def generate_fixed_cost(self):
+        """Generate FixedCost.csv (annual O&M costs)"""
+        data = []
+        
+        for tech, cost in self.fixed_costs.items():
+            for year in self.years:
+                data.append({
+                    'REGION': 'ISRAEL',
+                    'TECHNOLOGY': tech,
+                    'YEAR': year,
+                    'VALUE': cost
+                })
+        
+        df = pd.DataFrame(data)
+        output_file = self.output_dir / 'FixedCost.csv'
+        df.to_csv(output_file, index=False)
+        print(f"Generated: {output_file}")
+    
+    def generate_variable_cost(self):
+        """Generate VariableCost.csv (per PJ produced)"""
+        data = []
+        
+        for tech, cost in self.variable_costs.items():
+            for year in self.years:
+                data.append({
+                    'REGION': 'ISRAEL',
+                    'TECHNOLOGY': tech,
+                    'MODE_OF_OPERATION': 1,
+                    'YEAR': year,
+                    'VALUE': cost
+                })
+        
+        df = pd.DataFrame(data)
+        output_file = self.output_dir / 'VariableCost.csv'
+        df.to_csv(output_file, index=False)
+        print(f"Generated: {output_file}")
+    
+    def generate_emission_activity_ratio(self):
+        """Generate EmissionActivityRatio.csv"""
+        data = []
+        
+        for tech, emissions in self.emission_ratios.items():
+            for emission, ratio in emissions.items():
+                for year in self.years:
+                    data.append({
+                        'REGION': 'ISRAEL',
+                        'TECHNOLOGY': tech,
+                        'EMISSION': emission,
+                        'MODE_OF_OPERATION': 1,
+                        'YEAR': year,
+                        'VALUE': ratio
+                    })
+        
+        df = pd.DataFrame(data)
+        output_file = self.output_dir / 'EmissionActivityRatio.csv'
+        df.to_csv(output_file, index=False)
+        print(f"Generated: {output_file}")
+    
+    def generate_residual_capacity(self):
+        """Generate ResidualCapacity.csv (existing capacity in base year)"""
+        data = []
+        
+        for tech, capacity in self.residual_capacity.items():
+            data.append({
+                'REGION': 'ISRAEL',
+                'TECHNOLOGY': tech,
+                'YEAR': self.start_year,
+                'VALUE': capacity
+            })
+        
+        df = pd.DataFrame(data)
+        output_file = self.output_dir / 'ResidualCapacity.csv'
+        df.to_csv(output_file, index=False)
+        print(f"Generated: {output_file}")
+    
+    def build_yaml_model(self):
+        """Build complete YAML model structure for tz-osemosys"""
+        if not self.yaml_format:
+            return
+        
+        print("Building YAML model structure...")
+        
+        # Initialize model structure
+        model = {
+            'id': 'israel_energy_model',
+            'time_definition': {
+                'start_year': self.start_year,
+                'end_year': self.end_year,
+                'years': self.years
+            },
+            'regions': [{'id': r} for r in self.regions],
+            'commodities': [{'id': f} for f in self.all_commodities],
+            'time_slices': [{'id': ts} for ts in self.timeslices],
+            'emissions': [{'id': e} for e in ['CO2', 'NOx', 'SOx', 'PM25']],
+            'technologies': []
+        }
+        
+        # Build technology definitions with parameters
+        self._add_technologies_to_yaml(model)
+        
+        # Add demand specifications
+        self._add_demand_to_yaml(model)
+        
+        self.model_data = {'model': model}
+    
+    def _add_technologies_to_yaml(self, model):
+        """Add technology definitions with all parameters to YAML model"""
+        # Build technology entries using shared parameters
         for tech_id in self.all_technologies:
             tech = {'id': tech_id}
             mode = {'id': 1}
             
             # Capacity factor (use wildcard for years, specific timeslices for solar)
-            if tech_id in cf_map:
-                cf = cf_map[tech_id]
+            if tech_id in self.capacity_factors:
+                cf = self.capacity_factors[tech_id]
                 if 'Solar' in tech_id:
                     mode['capacity_factor'] = {
                         ts: (cf * 1.5 if 'DAY' in ts else 0.0) 
@@ -948,44 +685,41 @@ class OSeMOSYSIsraelDataGenerator:
                 else:
                     mode['capacity_factor'] = {'*': cf}
             
-            # Capital cost (base year, learning curve handled separately)
-            if tech_id in capital_costs:
-                base_cost = capital_costs[tech_id]
-                # For simplicity, use base cost for all years
-                # In practice, you might want to specify year-by-year or use expressions
-                mode['capex'] = {'*': base_cost}
+            # Capital cost
+            if tech_id in self.capital_costs:
+                mode['capex'] = {'*': self.capital_costs[tech_id]}
             
             # Fixed cost
-            if tech_id in fixed_costs:
-                mode['opex_fixed'] = {'*': fixed_costs[tech_id]}
+            if tech_id in self.fixed_costs:
+                mode['opex_fixed'] = {'*': self.fixed_costs[tech_id]}
             
             # Variable cost
-            if tech_id in variable_costs:
-                mode['opex_variable'] = {'*': variable_costs[tech_id]}
+            if tech_id in self.variable_costs:
+                mode['opex_variable'] = {'*': self.variable_costs[tech_id]}
             
             # Input activity ratio
-            if tech_id in input_ratios:
+            if tech_id in self.input_ratios:
                 mode['input_activity_ratio'] = {
-                    fuel: {'*': ratio} for fuel, ratio in input_ratios[tech_id].items()
+                    fuel: {'*': ratio} for fuel, ratio in self.input_ratios[tech_id].items()
                 }
             
             # Output activity ratio
-            if tech_id in output_ratios:
+            if tech_id in self.output_ratios:
                 mode['output_activity_ratio'] = {
-                    fuel: {'*': ratio} for fuel, ratio in output_ratios[tech_id].items()
+                    fuel: {'*': ratio} for fuel, ratio in self.output_ratios[tech_id].items()
                 }
             
             # Emission activity ratio
-            if tech_id in emission_ratios:
+            if tech_id in self.emission_ratios:
                 mode['emission_activity_ratio'] = {
                     emission: {'*': ratio} 
-                    for emission, ratio in emission_ratios[tech_id].items()
+                    for emission, ratio in self.emission_ratios[tech_id].items()
                 }
             
             # Residual capacity
-            if tech_id in residual_capacity:
+            if tech_id in self.residual_capacity:
                 tech['residual_capacity'] = {
-                    str(self.start_year): residual_capacity[tech_id]
+                    str(self.start_year): self.residual_capacity[tech_id]
                 }
             
             tech['operating_modes'] = [mode]
