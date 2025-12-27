@@ -43,7 +43,7 @@ The model input files are generated from a data generator script. If you already
 
 To generate input files:
 ```bash
-python osemosys_israel.py
+python gen_osemosys_files.py
 ```
 
 This will create the YAML model file in `osemosys_data_yaml/israel_energy_model.yaml`.
@@ -118,7 +118,7 @@ After solving, the model provides various output variables, including:
 
 ```
 OSeMOSYS2/
-├── osemosys_israel.py              # Data generator script
+├── gen_osemosys_files.py           # Data generator script
 ├── run_osemosys.py                 # Model runner script
 ├── osemosys_expand_wildcards.py   # CSV wildcard expander utility
 ├── osemosys_data_yaml/            # YAML input files
@@ -132,7 +132,7 @@ OSeMOSYS2/
 ## Troubleshooting
 
 ### "YAML file not found"
-- Run `python osemosys_israel.py` first to generate the input files
+- Run `python gen_osemosys_files.py` first to generate the input files
 
 ### "No solver available"
 - Install a solver: `pip install highspy` (recommended)
@@ -140,7 +140,7 @@ OSeMOSYS2/
 ### "Model validation errors"
 - Check that the YAML file is valid
 - Ensure all required parameters are defined
-- Review the model structure in `osemosys_israel.py`
+- Review the model structure in `gen_osemosys_files.py`
 
 ### "Import errors"
 - Ensure virtual environment is activated
@@ -160,14 +160,14 @@ The model includes:
 To update the model with real data:
 
 1. **Demand data**: Update `israel_energy_demand.xlsx` with actual demand projections
-2. **Technology costs**: Edit cost parameters in `osemosys_israel.py` (capital_costs, fixed_costs, variable_costs)
-3. **Efficiency parameters**: Update input/output ratios in `osemosys_israel.py`
+2. **Technology costs**: Edit cost parameters in `gen_osemosys_files.py` (capital_costs, fixed_costs, variable_costs)
+3. **Efficiency parameters**: Update input/output ratios in `gen_osemosys_files.py`
 4. **Capacity factors**: Modify capacity_factors dictionary
 5. **Existing capacity**: Update residual_capacity values
 
 After making changes, regenerate the YAML file:
 ```bash
-python osemosys_israel.py
+python gen_osemosys_files.py
 ```
 
 ## Additional Resources
