@@ -742,20 +742,52 @@ class OSeMOSYSIsraelDataGenerator:
             }
             
             for _, row in demand_df.iterrows():
-                year = int(row['Year'])
-                demand = row.get('AnnualDemand', 1000)
-                demand_spec['demand'][str(year)] = demand
+                try:
+                    year = int(row['Year']) if 'Year' in row else int(row.get('Year', self.start_year))
+                    demand = row.get('AnnualDemand', 1000)
+                    # Convert numpy types to native Python types for YAML serialization
+                    demand = self._convert_numpy_types(demand)
+                    demand_spec['demand'][str(year)] = demand
+                except (KeyError, ValueError, TypeError) as e:
+                    print(f"Warning: Skipping invalid demand row: {e}")
+                    continue
             
             model['specified_demand'].append(demand_spec)
+    
+    def _convert_numpy_types(self, obj):
+        """Recursively convert numpy types to native Python types"""
+        # Check for numpy scalar types
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        elif isinstance(obj, dict):
+            return {k: self._convert_numpy_types(v) for k, v in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [self._convert_numpy_types(item) for item in obj]
+        # Fallback: try to convert if it has .item() method (numpy scalar)
+        elif hasattr(obj, 'item') and not isinstance(obj, (str, bytes)):
+            try:
+                converted = obj.item()
+                # Recursively convert in case item() returns another numpy type
+                return self._convert_numpy_types(converted)
+            except (ValueError, AttributeError):
+                pass
+        return obj
     
     def save_yaml_model(self):
         """Save YAML model to file"""
         if not self.yaml_format or not hasattr(self, 'model_data'):
             return
         
+        # Convert all numpy types to native Python types before serialization
+        model_data_clean = self._convert_numpy_types(self.model_data)
+        
         output_file = self.output_dir / 'israel_energy_model.yaml'
         with open(output_file, 'w') as f:
-            yaml.dump(self.model_data, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+            yaml.dump(model_data_clean, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
         print(f"Generated: {output_file}")
         
         # Also try to load with tz-osemosys if available
@@ -809,7 +841,7 @@ if __name__ == "__main__":
     # Initialize generator with YAML format (default)
     generator = OSeMOSYSIsraelDataGenerator(
         excel_demand_file='israel_energy_demand.xlsx',
-        output_dir='osemosys_israel_data',
+        output_dir='osemosys_data_yaml',
         yaml_format=True  # Set to False for CSV format
     )
     
