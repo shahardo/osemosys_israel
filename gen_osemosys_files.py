@@ -663,9 +663,6 @@ class OSeMOSYSIsraelDataGenerator:
         # Build technology definitions with parameters
         self._add_technologies_to_yaml(model)
         
-        # Add demand specifications
-        self._add_demand_to_yaml(model)
-        
         self.model_data = {'model': model}
     
     def _add_technologies_to_yaml(self, model):
@@ -713,10 +710,25 @@ class OSeMOSYSIsraelDataGenerator:
             # Emission activity ratio
             if tech_id in self.emission_ratios:
                 mode['emission_activity_ratio'] = {
-                    emission: {'*': ratio} 
+                    emission: {'*': ratio}
                     for emission, ratio in self.emission_ratios[tech_id].items()
                 }
-            
+
+            # Specified annual demand for DMD technologies
+            if tech_id.startswith('DMD_') and hasattr(self, 'demand_data') and tech_id in self.demand_data:
+                demand_df = self.demand_data[tech_id]
+                mode['specified_annual_demand'] = {}
+                for _, row in demand_df.iterrows():
+                    try:
+                        year = int(row['Year']) if 'Year' in row else int(row.get('Year', self.start_year))
+                        demand = row.get('AnnualDemand', 1000)
+                        # Convert numpy types to native Python types for YAML serialization
+                        demand = self._convert_numpy_types(demand)
+                        mode['specified_annual_demand'][str(year)] = demand
+                    except (KeyError, ValueError, TypeError) as e:
+                        print(f"Warning: Skipping invalid demand row for {tech_id}: {e}")
+                        continue
+
             # Residual capacity
             if tech_id in self.residual_capacity:
                 tech['residual_capacity'] = {
@@ -725,35 +737,6 @@ class OSeMOSYSIsraelDataGenerator:
             
             tech['operating_modes'] = [mode]
             model['technologies'].append(tech)
-    
-    def _add_demand_to_yaml(self, model):
-        """Add demand specifications to YAML model"""
-        if not hasattr(self, 'demand_data'):
-            return
-        
-        model['specified_demand'] = []
-        
-        for tech_name, demand_df in self.demand_data.items():
-            fuel = tech_name.replace('DMD_', '')
-            
-            demand_spec = {
-                'region': 'ISRAEL',
-                'commodity': fuel,
-                'demand': {}
-            }
-            
-            for _, row in demand_df.iterrows():
-                try:
-                    year = int(row['Year']) if 'Year' in row else int(row.get('Year', self.start_year))
-                    demand = row.get('AnnualDemand', 1000)
-                    # Convert numpy types to native Python types for YAML serialization
-                    demand = self._convert_numpy_types(demand)
-                    demand_spec['demand'][str(year)] = demand
-                except (KeyError, ValueError, TypeError) as e:
-                    print(f"Warning: Skipping invalid demand row: {e}")
-                    continue
-            
-            model['specified_demand'].append(demand_spec)
     
     def _convert_numpy_types(self, obj):
         """Recursively convert numpy types to native Python types"""
