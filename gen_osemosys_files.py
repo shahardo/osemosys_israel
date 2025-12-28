@@ -648,6 +648,7 @@ class OSeMOSYSIsraelDataGenerator:
         model = {
             'id': 'israel_energy_model',
             'time_definition': {
+                'id': 'time_definition',
                 'start_year': self.start_year,
                 'end_year': self.end_year,
                 'years': self.years

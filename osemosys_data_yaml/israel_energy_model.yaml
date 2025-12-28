@@ -1,6 +1,7 @@
 model:
   id: israel_energy_model
   time_definition:
+    id: time_definition
     start_year: 2015
     end_year: 2050
     years:
