@@ -38,7 +38,7 @@ def run_model(yaml_file=None, solver_name=None):
         model = Model.from_yaml(str(yaml_path))
         print("Model loaded successfully!")
         print(f"Model ID: {model.id}")
-        print(f"Time horizon: {model.time_definition.start_year} - {model.time_definition.end_year}")
+        print(f"Time horizon: {min(model.time_definition.years)} - {max(model.time_definition.years)}")
         print(f"Regions: {[r.id for r in model.regions]}")
         print(f"Technologies: {len(model.technologies)}")
         print(f"Commodities: {len(model.commodities)}")
@@ -221,6 +221,12 @@ if __name__ == "__main__":
         print("Example: Viewing NewCapacity variable")
         print("=" * 60)
         view_solution(model, 'NewCapacity')
+
+        # Example: View marginal cost of emissions
+        print("\n" + "=" * 60)
+        print("Example: Viewing marginal cost of emissions (annual)")
+        print("=" * 60)
+        view_solution(model, 'marginal_cost_of_emissions_annual')
         
         # Optionally export all results
         print("\n" + "=" * 60)
