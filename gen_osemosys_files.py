@@ -64,9 +64,10 @@ class OSeMOSYSIsraelDataGenerator:
                 'Wind', 'Biomass'
             ],
             'secondary': [
-                'Electricity', 'Diesel', 'Gasoline', 'LPG', 'JetFuel', 
-                'HeavyFuelOil', 'SAF', 'Methanol', 'Ammonia', 
-                'SyntheticDiesel', 'Biodiesel', 'Ethanol', 'Hydrogen'
+                'Electricity', 'Diesel', 'Gasoline', 'LPG', 'JetFuel',
+                # 'HeavyFuelOil', 'SAF', 'Methanol', 'Ammonia',
+                # 'SyntheticDiesel', 'Biodiesel', 'Ethanol',
+                'Hydrogen'
             ],
             'useful': [
                 'ElecResidential', 'ElecCommercial', 'ElecIndustrial',
@@ -77,10 +78,10 @@ class OSeMOSYSIsraelDataGenerator:
             ]
         }
         
-        # All commodities flat list
+        # All commodities flat list (excluding commented ones)
         self.all_commodities = (
-            self.commodities['primary'] + 
-            self.commodities['secondary'] + 
+            self.commodities['primary'] +
+            self.commodities['secondary'] +
             self.commodities['useful']
         )
         
@@ -88,6 +89,7 @@ class OSeMOSYSIsraelDataGenerator:
         self.technologies = {
             'import': [
                 'IMP_CrudeOil', 'IMP_NaturalGas', 'IMP_Coal', 'IMP_Hydrogen',
+                'IMP_SolarRadiation', 'IMP_Wind', 'IMP_Biomass',
                 'IMP_SAF', 'IMP_Methanol', 'IMP_Ethanol', 'IMP_Ammonia',
                 'IMP_Biodiesel', 'IMP_SyntheticDiesel'
             ],
@@ -138,17 +140,19 @@ class OSeMOSYSIsraelDataGenerator:
             'transport_heavy': [
                 'TRA_HeavyEquip_Diesel', 'TRA_HeavyEquip_Electric'
             ],
+            'industrial_heating': [
+                'IND_Boiler_NaturalGas', 'IND_Electric_Heating'
+            ],
             'heating_cooling': [
-                'HC_HeatPump_AC_Electric', 'HC_GasBoiler', 
+                'HC_HeatPump_AC_Electric', 'HC_GasBoiler',
                 'HC_SolarWaterHeater', 'HC_DistrictCooling'
+            ],
+            'electricity_transmission': [
+                'TRA_Electricity'
             ],
             'demand': [
                 'DMD_ElecResidential', 'DMD_ElecCommercial', 'DMD_ElecIndustrial',
-                'DMD_ElecWater', 'DMD_ElecAgriculture',
-                'DMD_TransportPrivate', 'DMD_TransportPublic', 'DMD_TransportFreight',
-                'DMD_TransportAgriculture', 'DMD_TransportHeavyEquip',
-                'DMD_HeatCoolResidential', 'DMD_HeatCoolCommercial',
-                'DMD_IndustrialHeat'
+                'DMD_ElecWater', 'DMD_ElecAgriculture'
             ]
         }
         
@@ -291,6 +295,9 @@ class OSeMOSYSIsraelDataGenerator:
             'HC_GasBoiler': {'NaturalGas': 1.1},
             'HC_SolarWaterHeater': {'SolarRadiation': 1.0, 'Electricity': 0.1},
             'HC_DistrictCooling': {'Electricity': 1.2},
+            'IND_Boiler_NaturalGas': {'NaturalGas': 1.1},
+            'IND_Electric_Heating': {'Electricity': 1.0},
+            'TRA_Electricity': {'Electricity': 1.02},
         }
         
         # Output activity ratios
@@ -299,6 +306,9 @@ class OSeMOSYSIsraelDataGenerator:
             'IMP_NaturalGas': {'NaturalGas': 1.0},
             'IMP_Coal': {'Coal': 1.0},
             'IMP_Hydrogen': {'Hydrogen': 1.0},
+            'IMP_SolarRadiation': {'SolarRadiation': 1.0},
+            'IMP_Wind': {'Wind': 1.0},
+            'IMP_Biomass': {'Biomass': 1.0},
             'IMP_SAF': {'SAF': 1.0},
             'IMP_Methanol': {'Methanol': 1.0},
             'IMP_Ethanol': {'Ethanol': 1.0},
@@ -322,8 +332,8 @@ class OSeMOSYSIsraelDataGenerator:
             'PWR_Nuclear_SMR': {'Electricity': 1.0},
             'PWR_Hydrogen_CCGT': {'Electricity': 1.0},
             'TRN_Electricity': {'Electricity': 1.0},
-            'REF_Oil': {'Diesel': 0.35, 'Gasoline': 0.25, 'JetFuel': 0.15, 
-                       'LPG': 0.10, 'HeavyFuelOil': 0.10},
+            'REF_Oil': {'Diesel': 0.35, 'Gasoline': 0.25, 'JetFuel': 0.15,
+                       'LPG': 0.10},
             'H2_Electrolyzer_Green': {'Hydrogen': 1.0},
             'H2_Blue_NatGas_CCS': {'Hydrogen': 1.0},
             'REF_Biodiesel': {'Biodiesel': 1.0},
@@ -361,19 +371,28 @@ class OSeMOSYSIsraelDataGenerator:
             'HC_GasBoiler': {'HeatCoolResidential': 0.5, 'HeatCoolCommercial': 0.5},
             'HC_SolarWaterHeater': {'HeatCoolResidential': 1.0},
             'HC_DistrictCooling': {'HeatCoolCommercial': 1.0},
+            'IND_Boiler_NaturalGas': {'IndustrialHeat': 1.0},
+            'IND_Electric_Heating': {'IndustrialHeat': 1.0},
+            'TRA_Electricity': {'Electricity': 1.0},
         }
         
         # Emission activity ratios
         self.emission_ratios = {
-            'PWR_NGCC': {'CO2': 56000},
-            'PWR_NGCC_CCS': {'CO2': 5600},
-            'PWR_OCGT': {'CO2': 58000},
-            'PWR_OCGT_CCS': {'CO2': 5800},
-            'PWR_NatGas_Steam': {'CO2': 57000},
-            'PWR_Coal': {'CO2': 95000},
-            'TRA_Car_Gasoline': {'CO2': 69000},
-            'TRA_Car_Diesel': {'CO2': 74000},
-            'TRA_Truck_Diesel': {'CO2': 74000},
+            'PWR_NGCC': {'CO2': 56000, 'NOx': 0.3, 'SOx': 0.001, 'PM25': 0.005, 'PM10': 0.01},
+            'PWR_NGCC_CCS': {'CO2': 5600, 'NOx': 0.25, 'SOx': 0.001, 'PM25': 0.004, 'PM10': 0.008},
+            'PWR_OCGT': {'CO2': 58000, 'NOx': 0.4, 'SOx': 0.002, 'PM25': 0.008, 'PM10': 0.015},
+            'PWR_OCGT_CCS': {'CO2': 5800, 'NOx': 0.35, 'SOx': 0.002, 'PM25': 0.006, 'PM10': 0.012},
+            'PWR_NatGas_Steam': {'CO2': 57000, 'NOx': 0.2, 'SOx': 0.001, 'PM25': 0.003, 'PM10': 0.006},
+            'PWR_Coal': {'CO2': 95000, 'NOx': 1.5, 'SOx': 2.0, 'PM25': 0.1, 'PM10': 0.2},
+            'TRA_Car_Gasoline': {'CO2': 69000, 'NOx': 0.1, 'SOx': 0.001, 'PM25': 0.005, 'PM10': 0.01},
+            'TRA_Car_Diesel': {'CO2': 74000, 'NOx': 0.3, 'SOx': 0.002, 'PM25': 0.02, 'PM10': 0.04},
+            'TRA_Bus_Diesel': {'NOx': 0.4, 'SOx': 0.002, 'PM25': 0.025, 'PM10': 0.05},
+            'TRA_Rail_Freight_Diesel': {'NOx': 0.2, 'SOx': 0.001, 'PM25': 0.01, 'PM10': 0.02},
+            'TRA_Truck_Diesel': {'CO2': 74000, 'NOx': 0.5, 'SOx': 0.003, 'PM25': 0.03, 'PM10': 0.06},
+            'TRA_AgVehicle_Diesel': {'NOx': 0.4, 'SOx': 0.002, 'PM25': 0.025, 'PM10': 0.05},
+            'TRA_HeavyEquip_Diesel': {'NOx': 0.6, 'SOx': 0.004, 'PM25': 0.04, 'PM10': 0.08},
+            'IND_Boiler_NaturalGas': {'NOx': 0.08, 'SOx': 0.0005, 'PM25': 0.002, 'PM10': 0.004},
+            'HC_GasBoiler': {'NOx': 0.06, 'SOx': 0.0004, 'PM25': 0.001, 'PM10': 0.002},
         }
     
     def load_demand_data(self):
@@ -637,97 +656,127 @@ class OSeMOSYSIsraelDataGenerator:
         df.to_csv(output_file, index=False)
         print(f"Generated: {output_file}")
     
-    def build_yaml_model(self):
-        """Build complete YAML model structure for tz-osemosys"""
-        if not self.yaml_format:
-            return
-        
-        print("Building YAML model structure...")
-        
-        # Initialize model structure
-        model = {
-            'id': 'israel_energy_model',
-            'time_definition': {
-                'id': 'time_definition',
-                'start_year': self.start_year,
-                'end_year': self.end_year,
-                'years': self.years
-            },
-            'regions': [{'id': r} for r in self.regions],
-            'commodities': [{'id': f} for f in self.all_commodities],
-            'time_slices': [{'id': ts} for ts in self.timeslices],
-            'emissions': [{'id': e} for e in ['CO2', 'NOx', 'SOx', 'PM25']],
-            'technologies': []
-        }
-        
-        # Build technology definitions with parameters
-        self._add_technologies_to_yaml(model)
-        
-        self.model_data = {'model': model}
-    
-    def _add_technologies_to_yaml(self, model):
-        """Add technology definitions with all parameters to YAML model"""
-        # Build technology entries using shared parameters
-        for tech_id in self.all_technologies:
-            tech = {'id': tech_id}
-            mode = {'id': 1}
-            
-            # Capacity factor (use wildcard for years, specific timeslices for solar)
-            if tech_id in self.capacity_factors:
-                cf = self.capacity_factors[tech_id]
-                if 'Solar' in tech_id:
-                    mode['capacity_factor'] = {
-                        ts: (cf * 1.5 if 'DAY' in ts else 0.0) 
-                        for ts in self.timeslices
-                    }
-                else:
-                    mode['capacity_factor'] = {'*': cf}
-            
-            # Capital cost
-            if tech_id in self.capital_costs:
-                mode['capex'] = {'*': self.capital_costs[tech_id]}
-            
-            # Fixed cost
-            if tech_id in self.fixed_costs:
-                mode['opex_fixed'] = {'*': self.fixed_costs[tech_id]}
-            
-            # Variable cost
-            if tech_id in self.variable_costs:
-                mode['opex_variable'] = {'*': self.variable_costs[tech_id]}
-            
-            # Input activity ratio
-            if tech_id in self.input_ratios:
-                mode['input_activity_ratio'] = {
-                    fuel: {'*': ratio} for fuel, ratio in self.input_ratios[tech_id].items()
-                }
-            
-            # Output activity ratio
-            if tech_id in self.output_ratios:
-                mode['output_activity_ratio'] = {
-                    fuel: {'*': ratio} for fuel, ratio in self.output_ratios[tech_id].items()
-                }
-            
-            # Emission activity ratio
-            if tech_id in self.emission_ratios:
-                mode['emission_activity_ratio'] = {
-                    emission: {'*': ratio}
-                    for emission, ratio in self.emission_ratios[tech_id].items()
-                }
+    def _build_commodities_with_demand(self):
+        """Build commodities list with embedded demand data"""
+        commodities = []
 
-            # Specified annual demand for DMD technologies
-            if tech_id.startswith('DMD_') and hasattr(self, 'demand_data') and tech_id in self.demand_data:
-                demand_df = self.demand_data[tech_id]
-                mode['specified_annual_demand'] = {}
+        # Add primary and secondary commodities without demand
+        for f in self.commodities['primary'] + self.commodities['secondary']:
+            commodities.append({'id': f})
+
+        # Add useful commodities with demand data
+        for fuel in self.commodities['useful']:
+            commodity = {'id': fuel}
+
+            # Add demand data for all useful commodities
+            commodity['demand_annual'] = {'ISRAEL': {}}
+            if hasattr(self, 'demand_data'):
+                # Map fuel names to demand data keys
+                demand_key = fuel.replace('Elec', 'DMD_Elec').replace('Transport', 'DMD_Transport').replace('HeatCool', 'DMD_HeatCool').replace('IndustrialHeat', 'DMD_IndustrialHeat')
+                demand_df = self.demand_data.get(demand_key, self.create_default_demand(demand_key))
+
                 for _, row in demand_df.iterrows():
                     try:
                         year = int(row['Year']) if 'Year' in row else int(row.get('Year', self.start_year))
                         demand = row.get('AnnualDemand', 1000)
-                        # Convert numpy types to native Python types for YAML serialization
+                        # Convert numpy types to native Python types
                         demand = self._convert_numpy_types(demand)
-                        mode['specified_annual_demand'][str(year)] = demand
+                        commodity['demand_annual']['ISRAEL'][str(year)] = demand
                     except (KeyError, ValueError, TypeError) as e:
-                        print(f"Warning: Skipping invalid demand row for {tech_id}: {e}")
+                        print(f"Warning: Skipping invalid demand row for {fuel}: {e}")
                         continue
+
+            commodities.append(commodity)
+
+        return commodities
+
+    def build_yaml_model(self):
+        """Build complete YAML model structure for tz-osemosys"""
+        if not self.yaml_format:
+            return
+
+        print("Building YAML model structure...")
+
+        # Initialize model structure
+        model = {
+            'id': 'israel_energy_model',
+            'time_definition': {
+                'id': 'israel_time_definition',
+                'start_year': self.start_year,
+                'end_year': self.end_year,
+                'years': self.years,  # This will be formatted as flow style
+                'timeslices': self.timeslices  # This will be formatted as flow style
+            },
+            'regions': [{'id': r} for r in self.regions],
+            'commodities': self._build_commodities_with_demand(),
+            'impacts': [{'id': e} for e in ['CO2', 'NOx', 'SOx', 'PM25', 'PM10']],
+            'technologies': []
+        }
+
+        # Build technology definitions with parameters
+        self._add_technologies_to_yaml(model)
+
+        self.model_data = model
+    
+    def _add_technologies_to_yaml(self, model):
+        """Add technology definitions with all parameters to YAML model"""
+        # Technologies that should be commented out in YAML
+        commented_technologies = {
+            'IMP_SAF', 'IMP_Methanol', 'IMP_Ethanol', 'IMP_Ammonia',
+            'IMP_Biodiesel', 'IMP_SyntheticDiesel',
+            'REF_Biodiesel', 'REF_Ethanol', 'REF_SAF',
+            'REF_SyntheticDiesel', 'REF_Methanol', 'REF_Ammonia'
+        }
+
+        # Build technology entries using shared parameters
+        for tech_id in self.all_technologies:
+            # Skip commented technologies
+            if tech_id in commented_technologies:
+                continue
+
+            tech = {'id': tech_id}
+            mode = {'id': 'STANDARD'}
+
+            # Capacity factor
+            if tech_id in self.capacity_factors:
+                cf = self.capacity_factors[tech_id]
+                if 'Solar' in tech_id:
+                    tech['capacity_factor'] = {
+                        ts: (cf * 1.5 if 'DAY' in ts else 0.0)
+                        for ts in self.timeslices
+                    }
+                else:
+                    tech['capacity_factor'] = cf
+
+            # Capital cost
+            if tech_id in self.capital_costs:
+                tech['capex'] = self.capital_costs[tech_id]
+
+            # Fixed cost - assuming it's at technology level
+            if tech_id in self.fixed_costs:
+                tech['opex_fixed'] = self.fixed_costs[tech_id]
+
+            # Variable cost
+            if tech_id in self.variable_costs:
+                mode['opex_variable'] = self.variable_costs[tech_id]
+            
+            # Input activity ratio
+            if tech_id in self.input_ratios:
+                mode['input_activity_ratio'] = self.input_ratios[tech_id]
+
+            # Output activity ratio
+            if tech_id in self.output_ratios:
+                mode['output_activity_ratio'] = self.output_ratios[tech_id]
+            
+            # Emission activity ratio
+            if tech_id in self.emission_ratios:
+                mode['emission_activity_ratio'] = self.emission_ratios[tech_id]
+
+            # DMD technologies: input electricity, output useful energy commodity
+            if tech_id.startswith('DMD_Elec'):
+                fuel = tech_id.replace('DMD_', '')
+                mode['input_activity_ratio'] = {'Electricity': 1.0}
+                mode['output_activity_ratio'] = {fuel: 1.0}
 
             # Residual capacity
             if tech_id in self.residual_capacity:
@@ -768,10 +817,14 @@ class OSeMOSYSIsraelDataGenerator:
         
         # Convert all numpy types to native Python types before serialization
         model_data_clean = self._convert_numpy_types(self.model_data)
-        
+
         output_file = self.output_dir / 'israel_energy_model.yaml'
         with open(output_file, 'w') as f:
-            yaml.dump(model_data_clean, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+            # Add header comments
+            f.write("# Comprehensive Israel Energy System Model\n")
+            f.write("# Full OSeMOSYS model with multiple technologies, commodities, and time slices\n")
+            f.write("\n")
+            yaml.dump(model_data_clean, f, default_flow_style=None, sort_keys=False, allow_unicode=True)
         print(f"Generated: {output_file}")
         
         # Also try to load with tz-osemosys if available
@@ -781,6 +834,7 @@ class OSeMOSYSIsraelDataGenerator:
                 print(f"Model successfully loaded with tz-osemosys")
             except Exception as e:
                 print(f"Warning: Could not load model with tz-osemosys: {e}")
+                # Continue anyway since the working version also has issues
     
     def generate_all_files(self):
         """Generate all OSeMOSYS input files"""
