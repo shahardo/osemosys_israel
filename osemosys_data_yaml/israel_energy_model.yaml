@@ -24,10 +24,10 @@ commodities:
 time_slices:
 - id: DAY
 - id: NIGHT
-emissions:
-- id: CO2
 impacts:
 - id: CO2
+  penalty: 1
+#  constraint_annual: {"ISRAEL": {"*": 1000000}}
 technologies:
 - id: IMP_NaturalGas
   operating_modes:
@@ -57,3 +57,17 @@ technologies:
     emission_activity_ratio:
       CO2:
         '*': 56000
+- id: PWR_PV
+  capacity_factor:
+    '*': 0.25
+  capex:
+    '*': 5400
+  opex_fixed:
+    '*': 15
+  operating_modes:
+  - id: '1'
+    opex_variable:
+      '*': 0
+    output_activity_ratio:
+      Electricity:
+        '*': 1.0
