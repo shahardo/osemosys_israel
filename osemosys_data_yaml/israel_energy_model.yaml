@@ -25,13 +25,13 @@ commodities:
   - id: Gasoline
   - id: LPG
   - id: JetFuel
-  - id: HeavyFuelOil
-  - id: SAF
-  - id: Methanol
-  - id: Ammonia
-  - id: SyntheticDiesel
-  - id: Biodiesel
-  - id: Ethanol
+  # - id: HeavyFuelOil
+  # - id: SAF
+  # - id: Methanol
+  # - id: Ammonia
+  # - id: SyntheticDiesel
+  # - id: Biodiesel
+  # - id: Ethanol
   - id: Hydrogen
   - id: ElecResidential
     demand_annual:
@@ -546,6 +546,7 @@ impacts:
   - id: NOx
   - id: SOx
   - id: PM25
+  - id: PM10
 
 technologies:
   # Import/Supply Technologies
@@ -577,41 +578,59 @@ technologies:
         output_activity_ratio:
           Hydrogen: 1.0
 
-  - id: IMP_SAF
+  - id: IMP_SolarRadiation
     operating_modes:
       - id: STANDARD
         output_activity_ratio:
-          SAF: 1.0
+          SolarRadiation: 1.0
 
-  - id: IMP_Methanol
+  - id: IMP_Wind
     operating_modes:
       - id: STANDARD
         output_activity_ratio:
-          Methanol: 1.0
+          Wind: 1.0
 
-  - id: IMP_Ethanol
+  - id: IMP_Biomass
     operating_modes:
       - id: STANDARD
         output_activity_ratio:
-          Ethanol: 1.0
+          Biomass: 1.0
 
-  - id: IMP_Ammonia
-    operating_modes:
-      - id: STANDARD
-        output_activity_ratio:
-          Ammonia: 1.0
+  # - id: IMP_SAF
+  #   operating_modes:
+  #     - id: STANDARD
+  #       output_activity_ratio:
+  #         SAF: 1.0
 
-  - id: IMP_Biodiesel
-    operating_modes:
-      - id: STANDARD
-        output_activity_ratio:
-          Biodiesel: 1.0
+  # - id: IMP_Methanol
+  #   operating_modes:
+  #     - id: STANDARD
+  #       output_activity_ratio:
+  #         Methanol: 1.0
 
-  - id: IMP_SyntheticDiesel
-    operating_modes:
-      - id: STANDARD
-        output_activity_ratio:
-          SyntheticDiesel: 1.0
+  # - id: IMP_Ethanol
+  #   operating_modes:
+  #     - id: STANDARD
+  #       output_activity_ratio:
+  #         Ethanol: 1.0
+
+  # - id: IMP_Ammonia
+  #   operating_modes:
+  #     - id: STANDARD
+  #       output_activity_ratio:
+  #         Ammonia: 1.0
+
+  # - id: IMP_Biodiesel
+  #   operating_modes:
+  #     - id: STANDARD
+  #       output_activity_ratio:
+  #         Biodiesel: 1.0
+
+  # - id: IMP_SyntheticDiesel
+  #   operating_modes:
+  #     - id: STANDARD
+  #       output_activity_ratio:
+  #         SyntheticDiesel: 1.0
 
   - id: MIN_NaturalGas_Domestic
     operating_modes:
@@ -624,10 +643,10 @@ technologies:
     residual_capacity:
       '2015': 8.0
     capex: 900
+    capacity_factor: 0.85
+    opex_fixed: 20
     operating_modes:
       - id: STANDARD
-        capacity_factor: 0.85
-        opex_fixed: 20
         opex_variable: 500
         input_activity_ratio:
           NaturalGas: 1.75
@@ -635,62 +654,82 @@ technologies:
           Electricity: 1.0
         emission_activity_ratio:
           CO2: 56000
+          NOx: 0.3
+          SOx: 0.001
+          PM25: 0.005
+          PM10: 0.01
 
   - id: PWR_NGCC_CCS
     capex: 1500
+    capacity_factor: 0.8
     operating_modes:
       - id: STANDARD
-        capacity_factor: 0.8
         input_activity_ratio:
           NaturalGas: 2.0
         output_activity_ratio:
           Electricity: 1.0
         emission_activity_ratio:
           CO2: 5600
+          NOx: 0.25
+          SOx: 0.001
+          PM25: 0.004
+          PM10: 0.008
 
   - id: PWR_OCGT
     capex: 600
+    capacity_factor: 0.2
     operating_modes:
       - id: STANDARD
-        capacity_factor: 0.2
         input_activity_ratio:
           NaturalGas: 2.5
         output_activity_ratio:
           Electricity: 1.0
         emission_activity_ratio:
           CO2: 58000
+          NOx: 0.4
+          SOx: 0.002
+          PM25: 0.008
+          PM10: 0.015
 
   - id: PWR_OCGT_CCS
     capex: 1000
+    capacity_factor: 0.2
     operating_modes:
       - id: STANDARD
-        capacity_factor: 0.2
         input_activity_ratio:
           NaturalGas: 2.8
         output_activity_ratio:
           Electricity: 1.0
         emission_activity_ratio:
           CO2: 5800
+          NOx: 0.35
+          SOx: 0.002
+          PM25: 0.006
+          PM10: 0.012
 
   - id: PWR_NatGas_Steam
     capex: 1000
+    capacity_factor: 0.75
     operating_modes:
       - id: STANDARD
-        capacity_factor: 0.75
         input_activity_ratio:
           NaturalGas: 2.2
         output_activity_ratio:
           Electricity: 1.0
         emission_activity_ratio:
           CO2: 57000
+          NOx: 0.2
+          SOx: 0.001
+          PM25: 0.003
+          PM10: 0.006
 
   - id: PWR_Coal
     residual_capacity:
       '2015': 5.0
     capex: 2000
+    capacity_factor: 0.8
     operating_modes:
       - id: STANDARD
-        capacity_factor: 0.8
         opex_variable: 800
         input_activity_ratio:
           Coal: 2.5
@@ -698,21 +737,25 @@ technologies:
           Electricity: 1.0
         emission_activity_ratio:
           CO2: 95000
+          NOx: 1.5
+          SOx: 2.0
+          PM25: 0.1
+          PM10: 0.2
 
   - id: PWR_Solar_Utility
     residual_capacity:
       '2015': 0.5
     capex: 800
+    capacity_factor:
+      SUMMER_DAY: 0.3
+      SUMMER_NIGHT: 0.0
+      WINTER_DAY: 0.3
+      WINTER_NIGHT: 0.0
+      INTERMEDIATE_DAY: 0.3
+      INTERMEDIATE_NIGHT: 0.0
+    opex_fixed: 15
     operating_modes:
       - id: STANDARD
-        capacity_factor:
-          SUMMER_DAY: 0.3
-          SUMMER_NIGHT: 0.0
-          WINTER_DAY: 0.3
-          WINTER_NIGHT: 0.0
-          INTERMEDIATE_DAY: 0.3
-          INTERMEDIATE_NIGHT: 0.0
-        opex_fixed: 15
         opex_variable: 10
         input_activity_ratio:
           SolarRadiation: 1.0
@@ -721,15 +764,15 @@ technologies:
 
   - id: PWR_Solar_Rooftop_Res
     capex: 1200
+    capacity_factor:
+      SUMMER_DAY: 0.27
+      SUMMER_NIGHT: 0.0
+      WINTER_DAY: 0.27
+      WINTER_NIGHT: 0.0
+      INTERMEDIATE_DAY: 0.27
+      INTERMEDIATE_NIGHT: 0.0
     operating_modes:
       - id: STANDARD
-        capacity_factor:
-          SUMMER_DAY: 0.27
-          SUMMER_NIGHT: 0.0
-          WINTER_DAY: 0.27
-          WINTER_NIGHT: 0.0
-          INTERMEDIATE_DAY: 0.27
-          INTERMEDIATE_NIGHT: 0.0
         input_activity_ratio:
           SolarRadiation: 1.0
         output_activity_ratio:
@@ -737,15 +780,15 @@ technologies:
 
   - id: PWR_Solar_Rooftop_Com
     capex: 1000
+    capacity_factor:
+      SUMMER_DAY: 0.285
+      SUMMER_NIGHT: 0.0
+      WINTER_DAY: 0.285
+      WINTER_NIGHT: 0.0
+      INTERMEDIATE_DAY: 0.285
+      INTERMEDIATE_NIGHT: 0.0
     operating_modes:
       - id: STANDARD
-        capacity_factor:
-          SUMMER_DAY: 0.285
-          SUMMER_NIGHT: 0.0
-          WINTER_DAY: 0.285
-          WINTER_NIGHT: 0.0
-          INTERMEDIATE_DAY: 0.285
-          INTERMEDIATE_NIGHT: 0.0
         input_activity_ratio:
           SolarRadiation: 1.0
         output_activity_ratio:
@@ -755,10 +798,10 @@ technologies:
     residual_capacity:
       '2015': 0.1
     capex: 1400
+    capacity_factor: 0.25
+    opex_fixed: 25
     operating_modes:
       - id: STANDARD
-        capacity_factor: 0.25
-        opex_fixed: 25
         opex_variable: 15
         input_activity_ratio:
           Wind: 1.0
@@ -767,9 +810,9 @@ technologies:
 
   - id: PWR_CSP_Storage
     capex: 5000
+    capacity_factor: 0.45
     operating_modes:
       - id: STANDARD
-        capacity_factor: 0.45
         input_activity_ratio:
           SolarRadiation: 1.3
         output_activity_ratio:
@@ -777,9 +820,9 @@ technologies:
 
   - id: PWR_WTE_Incinerator
     capex: 3500
+    capacity_factor: 0.85
     operating_modes:
       - id: STANDARD
-        capacity_factor: 0.85
         input_activity_ratio:
           Biomass: 3.0
         output_activity_ratio:
@@ -787,9 +830,9 @@ technologies:
 
   - id: PWR_WTE_Biodigester
     capex: 2500
+    capacity_factor: 0.9
     operating_modes:
       - id: STANDARD
-        capacity_factor: 0.9
         input_activity_ratio:
           Biomass: 2.0
         output_activity_ratio:
@@ -797,10 +840,10 @@ technologies:
 
   - id: PWR_Nuclear_SMR
     capex: 6000
+    capacity_factor: 0.9
+    opex_fixed: 80
     operating_modes:
       - id: STANDARD
-        capacity_factor: 0.9
-        opex_fixed: 80
         input_activity_ratio:
           NaturalGas: 0.01
         output_activity_ratio:
@@ -808,9 +851,9 @@ technologies:
 
   - id: PWR_Hydrogen_CCGT
     capex: 1200
+    capacity_factor: 0.85
     operating_modes:
       - id: STANDARD
-        capacity_factor: 0.85
         input_activity_ratio:
           Hydrogen: 2.0
         output_activity_ratio:
@@ -847,61 +890,61 @@ technologies:
           Gasoline: 0.25
           JetFuel: 0.15
           LPG: 0.1
-          HeavyFuelOil: 0.1
+          # HeavyFuelOil: 0.1
 
-  - id: REF_Biodiesel
-    operating_modes:
-      - id: STANDARD
-        input_activity_ratio:
-          Biomass: 1.3
-          Electricity: 0.1
-        output_activity_ratio:
-          Biodiesel: 1.0
+  # - id: REF_Biodiesel
+  #   operating_modes:
+  #     - id: STANDARD
+  #       input_activity_ratio:
+  #         Biomass: 1.3
+  #         Electricity: 0.1
+  #       output_activity_ratio:
+  #         Biodiesel: 1.0
 
-  - id: REF_Ethanol
-    operating_modes:
-      - id: STANDARD
-        input_activity_ratio:
-          Biomass: 1.4
-          Electricity: 0.1
-        output_activity_ratio:
-          Ethanol: 1.0
+  # - id: REF_Ethanol
+  #   operating_modes:
+  #     - id: STANDARD
+  #       input_activity_ratio:
+  #         Biomass: 1.4
+  #         Electricity: 0.1
+  #       output_activity_ratio:
+  #         Ethanol: 1.0
 
-  - id: REF_SAF
-    operating_modes:
-      - id: STANDARD
-        input_activity_ratio:
-          Hydrogen: 1.5
-          Electricity: 0.2
-        output_activity_ratio:
-          SAF: 1.0
+  # - id: REF_SAF
+  #   operating_modes:
+  #     - id: STANDARD
+  #       input_activity_ratio:
+  #         Hydrogen: 1.5
+  #         Electricity: 0.2
+  #       output_activity_ratio:
+  #         SAF: 1.0
 
-  - id: REF_SyntheticDiesel
-    operating_modes:
-      - id: STANDARD
-        input_activity_ratio:
-          Hydrogen: 1.4
-          Electricity: 0.2
-        output_activity_ratio:
-          SyntheticDiesel: 1.0
+  # - id: REF_SyntheticDiesel
+  #   operating_modes:
+  #     - id: STANDARD
+  #       input_activity_ratio:
+  #         Hydrogen: 1.4
+  #         Electricity: 0.2
+  #       output_activity_ratio:
+  #         SyntheticDiesel: 1.0
 
-  - id: REF_Methanol
-    operating_modes:
-      - id: STANDARD
-        input_activity_ratio:
-          Hydrogen: 1.3
-          Electricity: 0.15
-        output_activity_ratio:
-          Methanol: 1.0
+  # - id: REF_Methanol
+  #   operating_modes:
+  #     - id: STANDARD
+  #       input_activity_ratio:
+  #         Hydrogen: 1.3
+  #         Electricity: 0.15
+  #       output_activity_ratio:
+  #         Methanol: 1.0
 
-  - id: REF_Ammonia
-    operating_modes:
-      - id: STANDARD
-        input_activity_ratio:
-          Hydrogen: 1.2
-          Electricity: 0.15
-        output_activity_ratio:
-          Ammonia: 1.0
+  # - id: REF_Ammonia
+  #   operating_modes:
+  #     - id: STANDARD
+  #       input_activity_ratio:
+  #         Hydrogen: 1.2
+  #         Electricity: 0.15
+  #       output_activity_ratio:
+  #         Ammonia: 1.0
 
   # Hydrogen Production
   - id: H2_Electrolyzer_Green
@@ -963,6 +1006,56 @@ technologies:
         output_activity_ratio:
           Hydrogen: 1.0
 
+  # Electricity Transmission
+  - id: TRA_Electricity
+    operating_modes:
+      - id: STANDARD
+        input_activity_ratio:
+          Electricity: 1.02
+        output_activity_ratio:
+          Electricity: 1.0
+
+  # Demand Technologies
+  - id: DMD_ElecResidential
+    operating_modes:
+      - id: STANDARD
+        input_activity_ratio:
+          Electricity: 1.0
+        output_activity_ratio:
+          ElecResidential: 1.0
+
+  - id: DMD_ElecCommercial
+    operating_modes:
+      - id: STANDARD
+        input_activity_ratio:
+          Electricity: 1.0
+        output_activity_ratio:
+          ElecCommercial: 1.0
+
+  - id: DMD_ElecIndustrial
+    operating_modes:
+      - id: STANDARD
+        input_activity_ratio:
+          Electricity: 1.0
+        output_activity_ratio:
+          ElecIndustrial: 1.0
+
+  - id: DMD_ElecWater
+    operating_modes:
+      - id: STANDARD
+        input_activity_ratio:
+          Electricity: 1.0
+        output_activity_ratio:
+          ElecWater: 1.0
+
+  - id: DMD_ElecAgriculture
+    operating_modes:
+      - id: STANDARD
+        input_activity_ratio:
+          Electricity: 1.0
+        output_activity_ratio:
+          ElecAgriculture: 1.0
+
   # Transportation Technologies
   - id: TRA_Car_Gasoline
     operating_modes:
@@ -973,6 +1066,10 @@ technologies:
           TransportPrivate: 1.0
         emission_activity_ratio:
           CO2: 69000
+          NOx: 0.1
+          SOx: 0.001
+          PM25: 0.005
+          PM10: 0.01
 
   - id: TRA_Car_Diesel
     operating_modes:
@@ -983,6 +1080,10 @@ technologies:
           TransportPrivate: 1.0
         emission_activity_ratio:
           CO2: 74000
+          NOx: 0.3
+          SOx: 0.002
+          PM25: 0.02
+          PM10: 0.04
 
   - id: TRA_Car_Hybrid
     operating_modes:
@@ -1018,6 +1119,11 @@ technologies:
           Diesel: 1.0
         output_activity_ratio:
           TransportPublic: 1.0
+        emission_activity_ratio:
+          NOx: 0.4
+          SOx: 0.002
+          PM25: 0.025
+          PM10: 0.05
 
   - id: TRA_Bus_CNG
     operating_modes:
@@ -1076,6 +1182,11 @@ technologies:
           Diesel: 1.0
         output_activity_ratio:
           TransportFreight: 1.0
+        emission_activity_ratio:
+          NOx: 0.2
+          SOx: 0.001
+          PM25: 0.01
+          PM10: 0.02
 
   - id: TRA_Truck_Diesel
     operating_modes:
@@ -1086,6 +1197,10 @@ technologies:
           TransportFreight: 1.0
         emission_activity_ratio:
           CO2: 74000
+          NOx: 0.5
+          SOx: 0.003
+          PM25: 0.03
+          PM10: 0.06
 
   - id: TRA_Truck_Electric
     capex: 200
@@ -1112,6 +1227,11 @@ technologies:
           Diesel: 1.0
         output_activity_ratio:
           TransportAgriculture: 1.0
+        emission_activity_ratio:
+          NOx: 0.4
+          SOx: 0.002
+          PM25: 0.025
+          PM10: 0.05
 
   - id: TRA_AgVehicle_Electric
     operating_modes:
@@ -1128,6 +1248,11 @@ technologies:
           Diesel: 1.0
         output_activity_ratio:
           TransportHeavyEquip: 1.0
+        emission_activity_ratio:
+          NOx: 0.6
+          SOx: 0.004
+          PM25: 0.04
+          PM10: 0.08
 
   - id: TRA_HeavyEquip_Electric
     operating_modes:
@@ -1136,6 +1261,28 @@ technologies:
           Electricity: 1.0
         output_activity_ratio:
           TransportHeavyEquip: 1.0
+
+  # Industrial Heating
+  - id: IND_Boiler_NaturalGas
+    operating_modes:
+      - id: STANDARD
+        input_activity_ratio:
+          NaturalGas: 1.1
+        output_activity_ratio:
+          IndustrialHeat: 1.0
+        emission_activity_ratio:
+          NOx: 0.08
+          SOx: 0.0005
+          PM25: 0.002
+          PM10: 0.004
+
+  - id: IND_Electric_Heating
+    operating_modes:
+      - id: STANDARD
+        input_activity_ratio:
+          Electricity: 1.0
+        output_activity_ratio:
+          IndustrialHeat: 1.0
 
   # Heating and Cooling
   - id: HC_HeatPump_AC_Electric
@@ -1155,6 +1302,11 @@ technologies:
         output_activity_ratio:
           HeatCoolResidential: 0.5
           HeatCoolCommercial: 0.5
+        emission_activity_ratio:
+          NOx: 0.06
+          SOx: 0.0004
+          PM25: 0.001
+          PM10: 0.002
 
   - id: HC_SolarWaterHeater
     operating_modes:
